@@ -28,9 +28,6 @@ COPY scripts/startup.sh /home/node/app/startup.sh
 COPY scripts/db-keepalive.sh /home/node/app/db-keepalive.sh
 RUN chmod +x /home/node/app/*.sh
 
-# Copy workflow templates for reference
-COPY workflows/ /home/node/app/workflows/
-
 # =============================================================================
 # Environment Configuration
 # =============================================================================
