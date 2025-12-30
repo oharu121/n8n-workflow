@@ -1,18 +1,33 @@
 # =============================================================================
-# n8n on Hugging Face Spaces (Minimal)
+# n8n on Hugging Face Spaces
+# Optimized for HF Spaces free tier (2 vCPU, 16GB RAM, 50GB disk)
 # =============================================================================
 
 FROM node:24-alpine
 
-# Install only essential dependencies
+# Install system dependencies
 RUN apk add --no-cache \
-    bash \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
     ca-certificates \
-    curl \
+    ttf-freefont \
+    ffmpeg \
+    yt-dlp \
     postgresql-client \
+    curl \
+    bash \
+    tzdata \
     tini \
+    git \
     python3 \
-    tzdata
+    py3-pip \
+    make \
+    g++ \
+    build-base \
+    cairo-dev \
+    pango-dev
 
 # Set timezone
 ENV TZ=Asia/Tokyo
