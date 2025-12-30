@@ -11,6 +11,7 @@ RUN apk add --no-cache \
     curl \
     postgresql-client \
     tini \
+    python3 \
     tzdata
 
 # Set timezone
