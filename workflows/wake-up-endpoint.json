@@ -1,0 +1,52 @@
+{
+  "name": "wake-up-endpoint",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "wake-up",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-wake-up",
+      "name": "Wake Up Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "wake-up-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'awake', timestamp: new Date().toISOString(), message: 'n8n is running on Hugging Face Spaces' }) }}"
+      },
+      "id": "respond-wake-up",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [470, 300]
+    }
+  ],
+  "connections": {
+    "Wake Up Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "hf-spaces-n8n"
+  },
+  "tags": []
+}

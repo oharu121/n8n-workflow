@@ -1,0 +1,39 @@
+# Environment files
+.env
+.env.*
+*.local
+
+# Node modules
+node_modules/
+
+# n8n data (local development)
+.n8n/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Credentials (never commit these!)
+credentials.json
+service-account.json
+*.pem
+*.key
+
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

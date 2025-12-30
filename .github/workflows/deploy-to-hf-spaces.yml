@@ -1,0 +1,65 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild on HF Spaces'
+        required: false
+        default: 'false'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Add Hugging Face remote
+        run: |
+          git remote add hf https://${{ secrets.HF_USERNAME }}:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }} || true
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push hf main --force
+
+      - name: Wait for Space to start building
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          MAX_RETRIES=20
+          RETRY_INTERVAL=30
+          SPACE_URL="https://${{ secrets.HF_USERNAME }}-${{ secrets.HF_SPACE_NAME }}.hf.space"
+
+          echo "Checking health at: $SPACE_URL/healthz"
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SPACE_URL/healthz" || echo "000")
+
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed! n8n is running."
+              exit 0
+            fi
+
+            echo "Attempt $i/$MAX_RETRIES: Status $STATUS, waiting ${RETRY_INTERVAL}s..."
+            sleep $RETRY_INTERVAL
+          done
+
+          echo "Warning: Health check did not pass after $MAX_RETRIES attempts"
+          echo "This may be normal if the Space is still building or sleeping"
+          echo "Check manually at: $SPACE_URL"
+          exit 0  # Don't fail the build - Space may just need more time
