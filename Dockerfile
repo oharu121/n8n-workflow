@@ -30,7 +30,6 @@ RUN chmod +x /home/node/app/*.sh
 
 # Copy workflow templates for reference
 COPY workflows/ /home/node/app/workflows/
-COPY pick-news-and-send-mail/ /home/node/app/pick-news-and-send-mail/
 
 # =============================================================================
 # Environment Configuration
