@@ -4,7 +4,8 @@ emoji: ⚡
 colorFrom: red
 colorTo: yellow
 sdk: docker
-app_port: 7860
+license: mit
+short_description: n8n free hosted with supebase
 ---
 
 # n8n Workflow Automation on Hugging Face Spaces
