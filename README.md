@@ -1,12 +1,10 @@
 ---
-title: n8n Workflow Automation
+title: n8n Workflow
 emoji: ⚡
-colorFrom: orange
-colorTo: red
+colorFrom: red
+colorTo: yellow
 sdk: docker
 app_port: 7860
-pinned: false
-license: fair-code
 ---
 
 # n8n Workflow Automation on Hugging Face Spaces
