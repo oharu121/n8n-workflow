@@ -4,7 +4,7 @@
 # Keeps Supabase connection alive by running periodic queries
 # =============================================================================
 
-INTERVAL=300  # 5 minutes in seconds
+INTERVAL=302400  # 3.5 days in seconds (runs twice per week to prevent Supabase pause)
 
 echo "Database keep-alive started (interval: ${INTERVAL}s)"
 

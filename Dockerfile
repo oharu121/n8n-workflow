@@ -82,7 +82,7 @@ ENV N8N_USER_FOLDER=/data/.n8n
 # N8N_EDITOR_BASE_URL     - https://oharu121-n8n-workflow.hf.space
 # DB_TYPE                 - postgresdb
 # DB_POSTGRESDB_HOST      - Supabase host
-# DB_POSTGRESDB_PORT      - 6543 (transaction pooler)
+# DB_POSTGRESDB_PORT      - 5432 (session mode - required for n8n)
 # DB_POSTGRESDB_DATABASE  - postgres
 # DB_POSTGRESDB_USER      - postgres
 # DB_POSTGRESDB_PASSWORD  - Supabase password
