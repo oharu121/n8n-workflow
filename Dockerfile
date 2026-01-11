@@ -64,12 +64,29 @@ ENV GENERIC_TIMEZONE=Asia/Tokyo
 # Disable secure cookie - HF Spaces handles HTTPS termination
 ENV N8N_SECURE_COOKIE=false
 
+# Trust proxy headers from HF Spaces reverse proxy (fixes rate-limit validation errors)
+ENV N8N_TRUST_PROXY=true
+
 # Chromium for puppeteer-based nodes
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # n8n data directory - use /data for HF persistent storage
 ENV N8N_USER_FOLDER=/data/.n8n
+
+# Execution data pruning (prevents Supabase free tier from filling up)
+ENV EXECUTIONS_DATA_PRUNE=true
+ENV EXECUTIONS_DATA_MAX_AGE=168
+ENV EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
+
+# Production logging (reduce noise)
+ENV N8N_LOG_LEVEL=warn
+
+# Limit concurrent executions (prevents resource exhaustion)
+ENV N8N_CONCURRENCY_PRODUCTION_LIMIT=10
+
+# Disable telemetry (optional)
+ENV N8N_DIAGNOSTICS_ENABLED=false
 
 # =============================================================================
 # Runtime Secrets (set via HF Spaces Settings > Variables and Secrets)
