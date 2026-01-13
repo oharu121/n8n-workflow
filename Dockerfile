@@ -95,7 +95,9 @@ ENV N8N_CONCURRENCY_PRODUCTION_LIMIT=10
 # Disable telemetry (optional)
 ENV N8N_DIAGNOSTICS_ENABLED=false
 
+# Enbale modules import for js code node
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
+ENV NODE_FUNCTION_ALLOW_BUILTIN=node:timers/promises
 
 # =============================================================================
 # Runtime Secrets (set via HF Spaces Settings > Variables and Secrets)
