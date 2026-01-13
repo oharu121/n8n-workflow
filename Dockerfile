@@ -74,10 +74,20 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # n8n data directory - use /data for HF persistent storage
 ENV N8N_USER_FOLDER=/data/.n8n
 
+# Database Optimization for Supabase / Remote Postgres
+ENV DB_POSTGRESDB_TIMEOUT=60000
+ENV DB_POSTGRESDB_POOL_MAX_SIZE=5
+ENV DB_POSTGRESDB_POOL_IDLE_TIMEOUT=20000
+
 # Execution data pruning (prevents Supabase free tier from filling up)
 ENV EXECUTIONS_DATA_PRUNE=true
 ENV EXECUTIONS_DATA_MAX_AGE=168
 ENV EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
+ENV EXECUTIONS_DATA_SAVE_ON_PROGRESS=false
+ENV EXECUTIONS_DATA_SAVE_ON_ERROR=all
+
+# Force n8n to use a single process for executions to reduce DB overhead
+ENV EXECUTIONS_PROCESS=main
 
 # Production logging (reduce noise)
 ENV N8N_LOG_LEVEL=warn
