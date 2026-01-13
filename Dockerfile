@@ -86,9 +86,6 @@ ENV EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
 ENV EXECUTIONS_DATA_SAVE_ON_PROGRESS=false
 ENV EXECUTIONS_DATA_SAVE_ON_ERROR=all
 
-# Force n8n to use a single process for executions to reduce DB overhead
-ENV EXECUTIONS_PROCESS=main
-
 # Production logging (reduce noise)
 ENV N8N_LOG_LEVEL=warn
 
@@ -97,6 +94,8 @@ ENV N8N_CONCURRENCY_PRODUCTION_LIMIT=10
 
 # Disable telemetry (optional)
 ENV N8N_DIAGNOSTICS_ENABLED=false
+
+ENV NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
 
 # =============================================================================
 # Runtime Secrets (set via HF Spaces Settings > Variables and Secrets)
