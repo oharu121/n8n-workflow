@@ -1,29 +1,45 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^Dockerfile$"],
-      "matchStrings": ["ARG N8N_VERSION=(?<currentValue>.*?)\\n"],
+      "managerFilePatterns": [
+        "/^Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG N8N_VERSION=(?<currentValue>.*?)\\n"
+      ],
       "depNameTemplate": "n8n",
       "datasourceTemplate": "npm"
     }
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["n8n"],
+      "matchPackageNames": [
+        "n8n"
+      ],
       "automerge": true,
       "automergeType": "pr",
-      "schedule": ["every weekend"],
+      "schedule": [
+        "every weekend"
+      ],
       "prPriority": 10,
       "platformAutomerge": true
     },
     {
-      "matchPackageNames": ["n8n"],
-      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "n8n"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "labels": ["breaking-change"]
+      "labels": [
+        "breaking-change"
+      ]
     }
   ]
 }
