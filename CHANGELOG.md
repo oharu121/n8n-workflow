@@ -8,9 +8,13 @@ All notable changes to this project will be documented in this file.
 - **Automated n8n version updates** - Integrated Renovate Bot for automatic detection and deployment of new n8n releases
 - `renovate.json` - Configuration for Renovate to monitor n8n versions in Dockerfile
 - Version pinning in Dockerfile (`ARG N8N_VERSION=2.3.4`)
+- `renovate-auto-merge.yml` - GitHub Action to auto-approve and merge Renovate PRs
+- Dockerfile environment variables: `N8N_RUNNERS_ENABLED`, `N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS`, `NOTION_MARKDOWN_CONVERSION`, `DB_POSTGRESDB_SCHEMA`
 
 ### Changed
 - n8n installation now uses explicit version (`npm install -g n8n@${N8N_VERSION}`) instead of latest
+- Reorganized Dockerfile environment variables into logical groups
+- **Deploy workflow optimization** - Added path filters to only trigger deployment when `Dockerfile` or `scripts/**` change (saves HF Spaces build resources)
 
 ### How It Works
 - Renovate checks npm registry every weekend for new n8n versions

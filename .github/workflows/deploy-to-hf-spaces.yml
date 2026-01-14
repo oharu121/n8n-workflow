@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Dockerfile'
+      - 'scripts/**'
   workflow_dispatch:
     inputs:
       force_rebuild:
