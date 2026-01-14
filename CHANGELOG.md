@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-01-15
+
+### Added
+- **Automated n8n version updates** - Integrated Renovate Bot for automatic detection and deployment of new n8n releases
+- `renovate.json` - Configuration for Renovate to monitor n8n versions in Dockerfile
+- Version pinning in Dockerfile (`ARG N8N_VERSION=2.3.4`)
+
+### Changed
+- n8n installation now uses explicit version (`npm install -g n8n@${N8N_VERSION}`) instead of latest
+
+### How It Works
+- Renovate checks npm registry every weekend for new n8n versions
+- Patch and minor updates auto-merge and deploy via existing GitHub Actions
+- Major version updates require manual review (labeled `breaking-change`)
+
+### Required Manual Steps
+1. Install Renovate GitHub App: https://github.com/apps/renovate
+2. Grant access to this repository
+3. Merge the onboarding PR that Renovate creates
+
 ## [1.1.0] - 2026-01-12
 
 ### Fixed
