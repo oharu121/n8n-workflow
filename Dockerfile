@@ -99,6 +99,8 @@ ENV N8N_DIAGNOSTICS_ENABLED=false
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
 ENV NODE_FUNCTION_ALLOW_BUILTIN=node:timers/promises
 
+ENV N8N_RUNNERS_TASK_TIMEOUT=900
+
 # =============================================================================
 # Runtime Secrets (set via HF Spaces Settings > Variables and Secrets)
 # =============================================================================
