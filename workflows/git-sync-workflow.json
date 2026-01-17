@@ -1,43 +1,42 @@
 {
+  "updatedAt": "2026-01-17T16:07:14.292Z",
+  "createdAt": "2026-01-15T17:34:16.824Z",
+  "id": "0WxkD9-eMPQr7WJy6LiDV",
   "name": "git-sync-workflow",
+  "active": false,
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 5
-            }
-          ]
-        }
-      },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [0, 0],
-      "id": "schedule-trigger",
-      "name": "Schedule Trigger (5min)"
-    },
-    {
-      "parameters": {
-        "resource": "workflow",
-        "operation": "getAll",
-        "returnAll": true
+        "filters": {},
+        "requestOptions": {}
       },
       "type": "n8n-nodes-base.n8n",
       "typeVersion": 1,
-      "position": [220, 0],
-      "id": "get-all-workflows",
-      "name": "Get All Workflows"
+      "position": [
+        -192,
+        160
+      ],
+      "id": "daa532fa-55b4-4a63-9b0a-c15bcc68e3fe",
+      "name": "Get All Workflows",
+      "credentials": {
+        "n8nApi": {
+          "id": "6fnLt2dVUQGp0JYd",
+          "name": "n8n account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Get stored state from static data\nconst staticData = $getWorkflowStaticData('global');\nconst storedWorkflows = staticData.workflows || {};\n\n// Current workflows from n8n API (exclude this sync workflow)\nconst SYNC_WORKFLOW_NAME = 'git-sync-workflow';\nconst currentWorkflows = $input.all()\n  .map(item => item.json)\n  .filter(wf => wf.name !== SYNC_WORKFLOW_NAME);\n\n// Build current state map\nconst currentMap = {};\nfor (const wf of currentWorkflows) {\n  currentMap[wf.id] = {\n    id: wf.id,\n    name: wf.name,\n    updatedAt: wf.updatedAt,\n    workflow: wf\n  };\n}\n\n// Detect changes\nconst created = [];\nconst updated = [];\nconst deleted = [];\n\n// Find created and updated workflows\nfor (const id in currentMap) {\n  const current = currentMap[id];\n  const stored = storedWorkflows[id];\n  \n  if (!stored) {\n    // New workflow\n    created.push(current);\n  } else if (stored.updatedAt !== current.updatedAt) {\n    // Updated workflow\n    updated.push(current);\n  }\n}\n\n// Find deleted workflows\nfor (const id in storedWorkflows) {\n  if (!currentMap[id]) {\n    deleted.push(storedWorkflows[id]);\n  }\n}\n\n// Helper: sanitize workflow name for filename\nfunction sanitizeName(name) {\n  return name\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '');\n}\n\n// Prepare output items\nconst changes = {\n  created: created.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'create'\n  })),\n  updated: updated.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'update'\n  })),\n  deleted: deleted.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'delete'\n  })),\n  hasChanges: created.length > 0 || updated.length > 0 || deleted.length > 0,\n  currentMap: currentMap,\n  summary: `Created: ${created.length}, Updated: ${updated.length}, Deleted: ${deleted.length}`\n};\n\nreturn [{ json: changes }];"
+        "jsCode": "// Get stored state from static data\nconst staticData = $getWorkflowStaticData('global');\nconst storedWorkflows = staticData.workflows || {};\n\n// Current workflows from n8n API\nconst currentWorkflows = $input.all()\n  .map(item => item.json)\n\n// Build current state map\nconst currentMap = {};\nfor (const wf of currentWorkflows) {\n  currentMap[wf.id] = {\n    id: wf.id,\n    name: wf.name,\n    updatedAt: wf.updatedAt,\n    workflow: wf\n  };\n}\n\n// Detect changes\nconst created = [];\nconst updated = [];\nconst deleted = [];\n\n// Find created and updated workflows\nfor (const id in currentMap) {\n  const current = currentMap[id];\n  const stored = storedWorkflows[id];\n  \n  if (!stored) {\n    // New workflow\n    created.push(current);\n  } else if (stored.updatedAt !== current.updatedAt) {\n    // Updated workflow\n    updated.push(current);\n  }\n}\n\n// Find deleted workflows\nfor (const id in storedWorkflows) {\n  if (!currentMap[id]) {\n    deleted.push(storedWorkflows[id]);\n  }\n}\n\n// Helper: sanitize workflow name for filename\nfunction sanitizeName(name) {\n  return name\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '');\n}\n\n// Prepare output items\nconst changes = {\n  created: created.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'create'\n  })),\n  updated: updated.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'update'\n  })),\n  deleted: deleted.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'delete'\n  })),\n  hasChanges: created.length > 0 || updated.length > 0 || deleted.length > 0,\n  currentMap: currentMap,\n  summary: `Created: ${created.length}, Updated: ${updated.length}, Deleted: ${deleted.length}`\n};\n\nreturn [{ json: changes }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 0],
-      "id": "detect-changes",
+      "position": [
+        32,
+        160
+      ],
+      "id": "76d0dbcb-2da3-4d04-88f0-03ca66b9ebb5",
       "name": "Detect Changes"
     },
     {
@@ -66,8 +65,11 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [660, 0],
-      "id": "if-has-changes",
+      "position": [
+        256,
+        160
+      ],
+      "id": "8d02eba5-2aa2-44ac-b28f-622f7169de8c",
       "name": "Has Changes?"
     },
     {
@@ -76,16 +78,18 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, -100],
-      "id": "split-changes",
+      "position": [
+        480,
+        64
+      ],
+      "id": "1a53420a-e811-4882-81df-1c24c9fd2315",
       "name": "Split Into Items"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $json.filename }}",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -98,20 +102,24 @@
         "options": {
           "response": {
             "response": {
-              "neverError": true
+              "neverError": true,
+              "responseFormat": "json"
             }
           }
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, -100],
-      "id": "get-file-sha",
+      "position": [
+        704,
+        64
+      ],
+      "id": "4e6dabc2-f6f2-4141-b0ae-6be37bc342da",
       "name": "Get File SHA",
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -127,7 +135,7 @@
           "conditions": [
             {
               "id": "is-delete-condition",
-              "leftValue": "={{ $json.action }}",
+              "leftValue": "={{ $('Split Into Items').item.json.action }}",
               "rightValue": "delete",
               "operator": {
                 "type": "string",
@@ -141,16 +149,19 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1320, -100],
-      "id": "is-delete",
+      "position": [
+        928,
+        64
+      ],
+      "id": "a110401e-0f76-41c8-a8e3-63837e7149f6",
       "name": "Is Delete?"
     },
     {
       "parameters": {
         "method": "DELETE",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $json.filename }}",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"message\": \"chore(n8n): remove workflow '{{ $json.name }}' [auto-sync]\",\n  \"sha\": \"{{ $('Get File SHA').item.json.sha }}\",\n  \"branch\": \"n8n-sync\"\n}",
@@ -158,36 +169,46 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, -200],
-      "id": "delete-file",
+      "position": [
+        1376,
+        -32
+      ],
+      "id": "5c9baae8-21f8-4b4d-9848-d50e946c35c6",
       "name": "Delete File",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+          "id": "IWWp65Bj7tNkqAlg",
+          "name": "Header Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
     {
       "parameters": {
         "method": "PUT",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $('Split Into Items').item.json.filename }}\n",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"chore(n8n): sync workflow '{{ $json.name }}' [auto-sync]\",\n  \"content\": \"{{ $json.contentBase64 }}\",\n  \"sha\": {{ $('Get File SHA').item.json.sha ? '\"' + $('Get File SHA').item.json.sha + '\"' : 'null' }},\n  \"branch\": \"n8n-sync\"\n}",
+        "jsonBody": "={{ $json.requestBody }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, 0],
-      "id": "create-update-file",
+      "position": [
+        1376,
+        160
+      ],
+      "id": "cd6044ea-f6eb-4533-9ac8-e2df8feae10d",
       "name": "Create/Update File",
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -198,22 +219,24 @@
       },
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
-      "position": [1760, -100],
-      "id": "aggregate-results",
+      "position": [
+        1600,
+        64
+      ],
+      "id": "049c6fcc-7505-406b-834d-1de7311330fe",
       "name": "Aggregate Results"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "head",
-              "value": "={{ $env.GITHUB_OWNER }}:n8n-sync"
+              "value": "=oharu121:n8n-sync"
             },
             {
               "name": "base",
@@ -229,13 +252,17 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1980, -100],
-      "id": "check-existing-pr",
+      "position": [
+        1824,
+        64
+      ],
+      "id": "8cd401f7-0176-4eeb-b89c-a1870a3dd0aa",
       "name": "Check Existing PR",
+      "alwaysOutputData": true,
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -251,11 +278,12 @@
           "conditions": [
             {
               "id": "no-pr-condition",
-              "leftValue": "={{ $json.length }}",
+              "leftValue": "={{ !$json.number }}",
               "rightValue": 0,
               "operator": {
-                "type": "number",
-                "operation": "equals"
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
               }
             }
           ],
@@ -265,16 +293,19 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2200, -100],
-      "id": "pr-exists",
+      "position": [
+        2048,
+        64
+      ],
+      "id": "5de350cb-256f-40b9-b86a-c8a7fc81be86",
       "name": "PR Exists?"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"title\": \"chore(n8n): workflow sync [auto]\",\n  \"head\": \"n8n-sync\",\n  \"base\": \"main\",\n  \"body\": \"## Automated n8n Workflow Sync\\n\\nThis PR was automatically created by the git-sync workflow.\\n\\n### Changes\\nWorkflows have been synchronized from the n8n instance.\\n\\n---\\n*Auto-generated by git-sync-workflow*\"\n}",
@@ -282,22 +313,25 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2420, -200],
-      "id": "create-pr",
+      "position": [
+        2272,
+        160
+      ],
+      "id": "9325213c-e9f5-4bbd-9fa6-8f545bb1bddf",
       "name": "Create PR",
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
     {
       "parameters": {
         "method": "PUT",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls/{{ $json.number }}/merge",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls/{{ $json.number }}/merge",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"commit_title\": \"chore(n8n): workflow sync [auto]\",\n  \"merge_method\": \"squash\"\n}",
@@ -311,13 +345,16 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2640, -200],
-      "id": "merge-pr",
+      "position": [
+        2496,
+        64
+      ],
+      "id": "d4d37f81-762d-42e3-bede-d47a916f5b00",
       "name": "Merge PR (Auto)",
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -327,16 +364,18 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2860, -100],
-      "id": "save-state",
+      "position": [
+        2720,
+        64
+      ],
+      "id": "ae6207cf-46d8-4361-aff0-ea31908fc1c7",
       "name": "Save State"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs/heads/n8n-sync",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs/heads/n8n-sync",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "options": {
           "response": {
             "response": {
@@ -347,13 +386,20 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 200],
-      "id": "check-branch",
+      "position": [
+        -1312,
+        160
+      ],
+      "id": "ed53a1b6-2c12-412e-949d-617dcf230bef",
       "name": "Check Branch Exists",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+          "id": "IWWp65Bj7tNkqAlg",
+          "name": "Header Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -373,7 +419,7 @@
               "rightValue": "Not Found",
               "operator": {
                 "type": "string",
-                "operation": "equals"
+                "operation": "notEquals"
               }
             }
           ],
@@ -383,36 +429,45 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [440, 200],
-      "id": "branch-exists",
+      "position": [
+        -1088,
+        160
+      ],
+      "id": "e4580e40-f784-43fb-be23-5766c156ba6c",
       "name": "Branch Exists?"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs/heads/main",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs/heads/main",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 100],
-      "id": "get-main-sha",
+      "position": [
+        -864,
+        256
+      ],
+      "id": "7aa53065-4271-479d-b073-ddaaf73cd6ad",
       "name": "Get Main SHA",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+          "id": "IWWp65Bj7tNkqAlg",
+          "name": "Header Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"ref\": \"refs/heads/n8n-sync\",\n  \"sha\": \"{{ $json.object.sha }}\"\n}",
@@ -420,13 +475,20 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 100],
-      "id": "create-branch",
+      "position": [
+        -640,
+        256
+      ],
+      "id": "640fb613-1684-410b-86d9-790ffec332af",
       "name": "Create n8n-sync Branch",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "github-token",
-          "name": "GitHub Token"
+          "id": "IWWp65Bj7tNkqAlg",
+          "name": "Header Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "6JPGyoToOxOcHftx",
+          "name": "n8n sync github token"
         }
       }
     },
@@ -434,16 +496,11 @@
       "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [660, 300],
-      "id": "branch-ok",
-      "name": "Branch OK"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [880, 0],
-      "id": "no-changes",
+      "position": [
+        480,
+        256
+      ],
+      "id": "80a3d37f-da98-4828-bc64-aac6074aa490",
       "name": "No Changes"
     },
     {
@@ -452,29 +509,68 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 0],
-      "id": "get-existing-pr",
+      "position": [
+        2272,
+        -32
+      ],
+      "id": "cc98547d-7920-4b86-ae23-dbf29e488adb",
       "name": "Get Existing PR"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1536,
+        160
+      ],
+      "id": "6181b14b-80e7-48d6-85e8-60d1eed86d35",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        64
+      ],
+      "id": "62286096-97d8-4736-abd0-695fadb630f3",
+      "name": "Branch is ready"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const original = $('Split Into Items').item.json;\nconst sha = $json.sha;\n\nconst body = {\n  message: `chore(n8n): sync workflow '${original.name}' [auto-sync]`,\n  content: original.contentBase64,\n  branch: 'n8n-sync'\n};\n\nif (sha) {\n  body.sha = sha;\n}\n\nreturn { requestBody: body, filename: original.filename };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        160
+      ],
+      "id": "be4eaaf3-5c16-4f8b-847d-322685081b5e",
+      "name": "Build Request Body"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -416,
+        160
+      ],
+      "id": "dc59c629-2ce8-4968-a108-b88f4e0bd003",
+      "name": "Merge"
     }
   ],
-  "pinData": {},
   "connections": {
-    "Schedule Trigger (5min)": {
-      "main": [
-        [
-          {
-            "node": "Get All Workflows",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Check Branch Exists",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Get All Workflows": {
       "main": [
         [
@@ -548,7 +644,7 @@
         ],
         [
           {
-            "node": "Create/Update File",
+            "node": "Build Request Body",
             "type": "main",
             "index": 0
           }
@@ -603,14 +699,14 @@
       "main": [
         [
           {
-            "node": "Create PR",
+            "node": "Get Existing PR",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Get Existing PR",
+            "node": "Create PR",
             "type": "main",
             "index": 0
           }
@@ -654,14 +750,14 @@
       "main": [
         [
           {
-            "node": "Get Main SHA",
+            "node": "Branch is ready",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Branch OK",
+            "node": "Get Main SHA",
             "type": "main",
             "index": 0
           }
@@ -689,17 +785,84 @@
           }
         ]
       ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Branch Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Request Body": {
+      "main": [
+        [
+          {
+            "node": "Create/Update File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create n8n-sync Branch": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Branch is ready": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Get All Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": false
   },
-  "versionId": "git-sync-v1",
+  "staticData": null,
   "meta": {
-    "templateCredsSetupCompleted": false,
-    "instanceId": ""
+    "templateCredsSetupCompleted": true
   },
-  "id": "",
+  "pinData": {},
+  "versionId": "04dba160-9177-42d6-8df5-025c1fad9dfa",
+  "activeVersionId": null,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-01-15T17:34:16.824Z",
+      "createdAt": "2026-01-15T17:34:16.824Z",
+      "role": "workflow:owner",
+      "workflowId": "0WxkD9-eMPQr7WJy6LiDV",
+      "projectId": "1yHpLTrY34GY4WHm"
+    }
+  ],
+  "activeVersion": null,
   "tags": []
 }
