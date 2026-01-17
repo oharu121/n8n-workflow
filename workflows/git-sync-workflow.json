@@ -1,0 +1,705 @@
+{
+  "name": "git-sync-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (5min)"
+    },
+    {
+      "parameters": {
+        "resource": "workflow",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "id": "get-all-workflows",
+      "name": "Get All Workflows"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get stored state from static data\nconst staticData = $getWorkflowStaticData('global');\nconst storedWorkflows = staticData.workflows || {};\n\n// Current workflows from n8n API (exclude this sync workflow)\nconst SYNC_WORKFLOW_NAME = 'git-sync-workflow';\nconst currentWorkflows = $input.all()\n  .map(item => item.json)\n  .filter(wf => wf.name !== SYNC_WORKFLOW_NAME);\n\n// Build current state map\nconst currentMap = {};\nfor (const wf of currentWorkflows) {\n  currentMap[wf.id] = {\n    id: wf.id,\n    name: wf.name,\n    updatedAt: wf.updatedAt,\n    workflow: wf\n  };\n}\n\n// Detect changes\nconst created = [];\nconst updated = [];\nconst deleted = [];\n\n// Find created and updated workflows\nfor (const id in currentMap) {\n  const current = currentMap[id];\n  const stored = storedWorkflows[id];\n  \n  if (!stored) {\n    // New workflow\n    created.push(current);\n  } else if (stored.updatedAt !== current.updatedAt) {\n    // Updated workflow\n    updated.push(current);\n  }\n}\n\n// Find deleted workflows\nfor (const id in storedWorkflows) {\n  if (!currentMap[id]) {\n    deleted.push(storedWorkflows[id]);\n  }\n}\n\n// Helper: sanitize workflow name for filename\nfunction sanitizeName(name) {\n  return name\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '');\n}\n\n// Prepare output items\nconst changes = {\n  created: created.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'create'\n  })),\n  updated: updated.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'update'\n  })),\n  deleted: deleted.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'delete'\n  })),\n  hasChanges: created.length > 0 || updated.length > 0 || deleted.length > 0,\n  currentMap: currentMap,\n  summary: `Created: ${created.length}, Updated: ${updated.length}, Deleted: ${deleted.length}`\n};\n\nreturn [{ json: changes }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "id": "detect-changes",
+      "name": "Detect Changes"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-changes-condition",
+              "leftValue": "={{ $json.hasChanges }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [660, 0],
+      "id": "if-has-changes",
+      "name": "Has Changes?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all changes into individual items for processing\nconst input = $input.first().json;\nconst allChanges = [\n  ...input.created,\n  ...input.updated,\n  ...input.deleted\n];\n\n// Also pass along the currentMap for later storage\n// And encode workflow content to base64 for GitHub API\nreturn allChanges.map(change => {\n  let contentBase64 = null;\n  if (change.action !== 'delete' && change.workflow) {\n    // Pretty print the workflow JSON and encode to base64\n    const jsonStr = JSON.stringify(change.workflow, null, 2);\n    contentBase64 = Buffer.from(jsonStr).toString('base64');\n  }\n  return {\n    json: {\n      ...change,\n      contentBase64: contentBase64,\n      currentMap: input.currentMap\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, -100],
+      "id": "split-changes",
+      "name": "Split Into Items"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ref",
+              "value": "n8n-sync"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, -100],
+      "id": "get-file-sha",
+      "name": "Get File SHA",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-delete-condition",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "delete",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1320, -100],
+      "id": "is-delete",
+      "name": "Is Delete?"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"chore(n8n): remove workflow '{{ $json.name }}' [auto-sync]\",\n  \"sha\": \"{{ $('Get File SHA').item.json.sha }}\",\n  \"branch\": \"n8n-sync\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, -200],
+      "id": "delete-file",
+      "name": "Delete File",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/contents/workflows/{{ $json.filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"chore(n8n): sync workflow '{{ $json.name }}' [auto-sync]\",\n  \"content\": \"{{ $json.contentBase64 }}\",\n  \"sha\": {{ $('Get File SHA').item.json.sha ? '\"' + $('Get File SHA').item.json.sha + '\"' : 'null' }},\n  \"branch\": \"n8n-sync\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "id": "create-update-file",
+      "name": "Create/Update File",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1760, -100],
+      "id": "aggregate-results",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "head",
+              "value": "={{ $env.GITHUB_OWNER }}:n8n-sync"
+            },
+            {
+              "name": "base",
+              "value": "main"
+            },
+            {
+              "name": "state",
+              "value": "open"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, -100],
+      "id": "check-existing-pr",
+      "name": "Check Existing PR",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "no-pr-condition",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2200, -100],
+      "id": "pr-exists",
+      "name": "PR Exists?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"chore(n8n): workflow sync [auto]\",\n  \"head\": \"n8n-sync\",\n  \"base\": \"main\",\n  \"body\": \"## Automated n8n Workflow Sync\\n\\nThis PR was automatically created by the git-sync workflow.\\n\\n### Changes\\nWorkflows have been synchronized from the n8n instance.\\n\\n---\\n*Auto-generated by git-sync-workflow*\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, -200],
+      "id": "create-pr",
+      "name": "Create PR",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/pulls/{{ $json.number }}/merge",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"commit_title\": \"chore(n8n): workflow sync [auto]\",\n  \"merge_method\": \"squash\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, -200],
+      "id": "merge-pr",
+      "name": "Merge PR (Auto)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store the current workflow state for next run\nconst staticData = $getWorkflowStaticData('global');\n\n// Get currentMap from first item (all items have it)\nconst firstItem = $input.first();\nif (firstItem && firstItem.json && firstItem.json.currentMap) {\n  staticData.workflows = firstItem.json.currentMap;\n}\n\nreturn [{ json: { message: 'State saved successfully', timestamp: new Date().toISOString() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, -100],
+      "id": "save-state",
+      "name": "Save State"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs/heads/n8n-sync",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 200],
+      "id": "check-branch",
+      "name": "Check Branch Exists",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "branch-not-found",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "Not Found",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [440, 200],
+      "id": "branch-exists",
+      "name": "Branch Exists?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs/heads/main",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 100],
+      "id": "get-main-sha",
+      "name": "Get Main SHA",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $env.GITHUB_OWNER }}/{{ $env.GITHUB_REPO }}/git/refs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ref\": \"refs/heads/n8n-sync\",\n  \"sha\": \"{{ $json.object.sha }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 100],
+      "id": "create-branch",
+      "name": "Create n8n-sync Branch",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "github-token",
+          "name": "GitHub Token"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [660, 300],
+      "id": "branch-ok",
+      "name": "Branch OK"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [880, 0],
+      "id": "no-changes",
+      "name": "No Changes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the existing PR from the check\nconst existingPRs = $('Check Existing PR').first().json;\nif (existingPRs && existingPRs.length > 0) {\n  return [{ json: existingPRs[0] }];\n}\nreturn [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0],
+      "id": "get-existing-pr",
+      "name": "Get Existing PR"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (5min)": {
+      "main": [
+        [
+          {
+            "node": "Get All Workflows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Branch Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Workflows": {
+      "main": [
+        [
+          {
+            "node": "Detect Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Changes": {
+      "main": [
+        [
+          {
+            "node": "Has Changes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Changes?": {
+      "main": [
+        [
+          {
+            "node": "Split Into Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Into Items": {
+      "main": [
+        [
+          {
+            "node": "Get File SHA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File SHA": {
+      "main": [
+        [
+          {
+            "node": "Is Delete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Delete?": {
+      "main": [
+        [
+          {
+            "node": "Delete File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create/Update File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete File": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create/Update File": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Check Existing PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing PR": {
+      "main": [
+        [
+          {
+            "node": "PR Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PR Exists?": {
+      "main": [
+        [
+          {
+            "node": "Create PR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Existing PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create PR": {
+      "main": [
+        [
+          {
+            "node": "Merge PR (Auto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge PR (Auto)": {
+      "main": [
+        [
+          {
+            "node": "Save State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Branch Exists": {
+      "main": [
+        [
+          {
+            "node": "Branch Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Branch Exists?": {
+      "main": [
+        [
+          {
+            "node": "Get Main SHA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Branch OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Main SHA": {
+      "main": [
+        [
+          {
+            "node": "Create n8n-sync Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing PR": {
+      "main": [
+        [
+          {
+            "node": "Merge PR (Auto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "git-sync-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "id": "",
+  "tags": []
+}

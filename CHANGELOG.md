@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-01-17
+
+### Added
+- **Git Sync Workflow** - Automatic backup of n8n workflows to GitHub repository
+- `workflows/git-sync-workflow.json` - 22-node n8n workflow that:
+  - Polls every 5 minutes for workflow changes
+  - Detects created, updated, and deleted workflows
+  - Pushes changes to `n8n-sync` branch
+  - Creates PR and auto-merges to main
+  - Uses `getWorkflowStaticData()` for state persistence
+- `.plans/git-sync-implementation.md` - Implementation documentation
+- `.plans/git-sync-comparison.md` - Comparison of n8n workflow vs GitHub Actions approach
+
+### How It Works
+- Schedule Trigger runs every day
+- Compares current workflows against stored state
+- Pushes changed workflow JSON files to `workflows/` directory in repo
+- Creates PR from `n8n-sync` → `main` and auto-merges
+- Handles branch creation if `n8n-sync` doesn't exist
+
+### Required Setup
+1. Create n8n API key (scope: `workflow:read`)
+2. Create GitHub Personal Access Token (scopes: Contents read/write, Pull requests read/write)
+3. Add credentials in n8n:
+   - n8n API credential
+   - Header Auth credential named "GitHub Token"
+4. Add environment variables: `GITHUB_OWNER`, `GITHUB_REPO`
+5. Import and activate the workflow
+
 ## [1.2.0] - 2026-01-15
 
 ### Added
