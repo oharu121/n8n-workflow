@@ -3,10 +3,22 @@
 ## Overview
 
 Simplify the current `git-sync-workflow` from 21 nodes to approximately 8-10 nodes by:
-1. Using GitHub GraphQL API to batch fetch all workflow files
-2. Comparing `updatedAt` timestamps directly
+1. Comparing n8n `updatedAt` vs GitHub file's last commit date
+2. Using one REST API call per workflow to get commit date
 3. Committing directly to `main` branch (no PR workflow)
 4. Removing static data state management
+
+## Key Insight
+
+Instead of fetching file content to compare `updatedAt`, we compare:
+- **n8n `updatedAt`** = when workflow was last saved in n8n
+- **GitHub last commit date** = when file was last committed
+
+```
+If n8n.updatedAt > GitHub.lastCommitDate → Commit the file
+```
+
+This eliminates the need to read file content from GitHub.
 
 ## Current vs Proposed Architecture
 
@@ -16,22 +28,19 @@ Schedule Trigger → Branch Check/Create → Get Workflows → Detect Changes (s
 → Split → Get SHA → Delete/Update → Aggregate → PR Check/Create → Auto-Merge → Save State
 ```
 
-### Proposed Flow (8-10 nodes)
+### Proposed Flow (~8 nodes)
 ```
 Schedule Trigger
     ↓
-┌─────────────────────────────────┐
-│  Get n8n Workflows              │  (parallel)
-│  Get GitHub Workflows (GraphQL) │
-└─────────────────────────────────┘
+Get All n8n Workflows
     ↓
-Compare updatedAt
+Split Into Items (one per workflow)
     ↓
-[If changes] Split Into Items
+Get Last Commit Date (REST: /commits?path=workflows/{filename})
     ↓
-Get File SHA (for existing files)
+Compare Dates (n8n.updatedAt > GitHub.commitDate?)
     ↓
-Commit to Main
+[If newer] Get File SHA → Commit to Main
 ```
 
 ---
@@ -75,8 +84,8 @@ Commit to Main
 
 | Node Name | Purpose |
 |-----------|---------|
-| Get GitHub Workflows | GraphQL API call to fetch all workflow files |
-| Compare updatedAt | New Code node to compare timestamps |
+| Get Last Commit Date | REST API: `/commits?path=workflows/{filename}&per_page=1` |
+| Compare Dates | Code node to check if n8n.updatedAt > GitHub.commitDate |
 
 ### Nodes to MODIFY (2 nodes)
 
@@ -89,73 +98,94 @@ Commit to Main
 
 ## New Node Implementations
 
-### 1. Get GitHub Workflows (HTTP Request - GraphQL)
+### 1. Get Last Commit Date (HTTP Request)
 
 **Node Type:** HTTP Request
-**Position:** Parallel with "Get All Workflows"
+**Position:** After "Split Into Items"
 
 **Configuration:**
 ```
-Method: POST
-URL: https://api.github.com/graphql
+Method: GET
+URL: https://api.github.com/repos/oharu121/n8n-workflow/commits
 Authentication: Bearer Token (existing: n8n sync github token)
-Headers:
-  Content-Type: application/json
-Body (JSON):
-{
-  "query": "query { repository(owner: \"oharu121\", name: \"n8n-workflow\") { object(expression: \"main:workflows\") { ... on Tree { entries { name object { ... on Blob { text } } } } } } }"
-}
+Query Parameters:
+  path: =workflows/{{ $json.filename }}
+  per_page: 1
+Options:
+  Never Error: true  (handles new files that have no commits)
 ```
 
-**Expected Response Structure:**
+**Expected Response (existing file):**
 ```json
-{
-  "data": {
-    "repository": {
-      "object": {
-        "entries": [
-          {
-            "name": "git-sync-workflow.json",
-            "object": {
-              "text": "{\"updatedAt\": \"2026-01-17T16:07:14.292Z\", ...}"
-            }
-          }
-        ]
+[
+  {
+    "sha": "abc123...",
+    "commit": {
+      "committer": {
+        "date": "2026-01-17T16:10:00Z"
       }
     }
   }
-}
+]
 ```
 
-### 2. Compare updatedAt (Code Node)
+**Expected Response (new file - no commits):**
+```json
+[]
+```
+
+### 2. Compare Dates (Code Node)
 
 **Node Type:** Code
-**Position:** After both Get Workflows nodes (use Merge node to combine inputs)
+**Position:** After "Get Last Commit Date"
 
 **JavaScript Code:**
 ```javascript
-// Get n8n workflows from first input
-const n8nWorkflows = $('Get All Workflows').all().map(item => item.json);
+const workflow = $('Split Into Items').item.json;
+const commits = $json;  // Array from GitHub API
 
-// Get GitHub files from GraphQL response
-const githubResponse = $('Get GitHub Workflows').first().json;
-const githubEntries = githubResponse.data?.repository?.object?.entries || [];
-
-// Build map of GitHub workflows: filename -> updatedAt
-const githubMap = {};
-for (const entry of githubEntries) {
-  if (entry.name.endsWith('.json') && entry.object?.text) {
-    try {
-      const content = JSON.parse(entry.object.text);
-      githubMap[entry.name] = {
-        updatedAt: content.updatedAt,
-        exists: true
-      };
-    } catch (e) {
-      // Skip invalid JSON files
-    }
-  }
+// Get GitHub's last commit date (null if file doesn't exist)
+let githubCommitDate = null;
+if (Array.isArray(commits) && commits.length > 0) {
+  githubCommitDate = new Date(commits[0].commit.committer.date);
 }
+
+// Get n8n's updatedAt
+const n8nUpdatedAt = new Date(workflow.updatedAt);
+
+// Determine if we need to sync
+let needsSync = false;
+let reason = '';
+
+if (!githubCommitDate) {
+  // File doesn't exist in GitHub yet
+  needsSync = true;
+  reason = 'new file';
+} else if (n8nUpdatedAt > githubCommitDate) {
+  // n8n version is newer
+  needsSync = true;
+  reason = 'updated';
+} else {
+  reason = 'already synced';
+}
+
+return {
+  json: {
+    ...workflow,
+    needsSync,
+    reason,
+    n8nUpdatedAt: workflow.updatedAt,
+    githubCommitDate: githubCommitDate ? githubCommitDate.toISOString() : null
+  }
+};
+```
+
+### 3. Modified: Split Into Items (Code Node)
+
+**Simplified JavaScript Code:**
+```javascript
+// Convert all workflows to individual items with filename
+const workflows = $input.all().map(item => item.json);
 
 // Helper: sanitize workflow name for filename
 function sanitizeName(name) {
@@ -167,54 +197,13 @@ function sanitizeName(name) {
     .replace(/^-|-$/g, '');
 }
 
-// Find workflows that need updating
-const toUpdate = [];
-for (const wf of n8nWorkflows) {
-  const filename = sanitizeName(wf.name) + '.json';
-  const github = githubMap[filename];
-
-  // Update if: file doesn't exist OR updatedAt is different
-  if (!github || github.updatedAt !== wf.updatedAt) {
-    toUpdate.push({
-      ...wf,
-      filename: filename,
-      action: github ? 'update' : 'create',
-      workflow: wf
-    });
-  }
-}
-
-// Return changes summary
-const hasChanges = toUpdate.length > 0;
-
-return [{
+return workflows.map(wf => ({
   json: {
-    hasChanges,
-    changes: toUpdate,
-    summary: `Found ${toUpdate.length} workflow(s) to sync`
+    ...wf,
+    filename: sanitizeName(wf.name) + '.json',
+    workflow: wf  // Keep full workflow for later commit
   }
-}];
-```
-
-### 3. Modified: Split Into Items (Code Node)
-
-**Simplified JavaScript Code:**
-```javascript
-const input = $input.first().json;
-const changes = input.changes || [];
-
-return changes.map(change => {
-  // Encode workflow content to base64 for GitHub API
-  const jsonStr = JSON.stringify(change.workflow, null, 2);
-  const contentBase64 = Buffer.from(jsonStr).toString('base64');
-
-  return {
-    json: {
-      ...change,
-      contentBase64: contentBase64
-    }
-  };
-});
+}));
 ```
 
 ### 4. Modified: Get File SHA (HTTP Request)
@@ -262,47 +251,32 @@ return { json: { requestBody: body, filename: original.filename } };
 
 ```
 Schedule Trigger
-    ↓
-    ├──→ Get All Workflows ──────────┐
-    │                                 │
-    └──→ Get GitHub Workflows ───────┤
-                                      ↓
-                                 Merge (Wait)
-                                      ↓
-                              Compare updatedAt
-                                      ↓
-                                Has Changes?
-                               /           \
-                         [Yes]               [No]
-                            ↓                  ↓
-                    Split Into Items      No Changes
-                            ↓
-                      Get File SHA
-                            ↓
-                    Build Request Body
-                            ↓
-                    Create/Update File
+        ↓
+Get All Workflows (n8n API)
+        ↓
+Split Into Items (one per workflow)
+        ↓
+Get Last Commit Date (GitHub REST API)
+        ↓
+Compare Dates (Code node)
+        ↓
+    Needs Sync?
+    /         \
+ [Yes]        [No]
+   ↓            ↓
+Get File SHA   (skip)
+   ↓
+Build Request Body
+   ↓
+Create/Update File (commit to main)
 ```
 
 ---
 
 ## Implementation Steps (for n8n UI)
 
-### Step 1: Add New Nodes
-1. Add **HTTP Request** node named "Get GitHub Workflows"
-   - Configure as GraphQL POST request (see config above)
-2. Add **Merge** node to wait for both API calls
-3. Add **Code** node named "Compare updatedAt"
-
-### Step 2: Rewire Connections
-1. Connect **Schedule Trigger** to both:
-   - Get All Workflows
-   - Get GitHub Workflows
-2. Connect both to **Merge** node
-3. Connect **Merge** → **Compare updatedAt** → **Has Changes?**
-
-### Step 3: Remove Old Nodes
-Delete these nodes (in order to avoid breaking connections):
+### Step 1: Remove Old Nodes (13 nodes)
+Delete these nodes first:
 1. Save State
 2. Merge PR (Auto)
 3. Get Existing PR
@@ -318,29 +292,59 @@ Delete these nodes (in order to avoid breaking connections):
 13. Get Main SHA
 14. Branch Exists?
 15. Check Branch Exists
+16. Detect Changes (will be replaced)
+17. Has Changes? (will be replaced)
+18. No Changes (optional, can keep for clarity)
+
+### Step 2: Add New Nodes
+1. Add **HTTP Request** node named "Get Last Commit Date"
+   - Method: GET
+   - URL: `https://api.github.com/repos/oharu121/n8n-workflow/commits`
+   - Query: `path=workflows/{{ $json.filename }}`, `per_page=1`
+   - Auth: Bearer token
+   - Options: Never Error = true
+
+2. Add **Code** node named "Compare Dates"
+   - Use the code from section above
+
+3. Add **IF** node named "Needs Sync?"
+   - Condition: `{{ $json.needsSync }}` equals `true`
+
+### Step 3: Rewire Connections
+```
+Schedule Trigger → Get All Workflows → Split Into Items → Get Last Commit Date
+→ Compare Dates → Needs Sync? → [true] → Get File SHA → Build Request Body → Create/Update File
+```
 
 ### Step 4: Modify Existing Nodes
-1. **Get File SHA**: Change `ref` query param to `main`
-2. **Build Request Body**: Update code (see above)
-3. **Split Into Items**: Update code (see above)
-4. **Has Changes?**: Rewire to connect from "Compare updatedAt"
+1. **Split Into Items**: Update code (see section above)
+2. **Get File SHA**: Change `ref` query param from `n8n-sync` to `main`
+3. **Build Request Body**: Change branch from `n8n-sync` to `main`
+4. **Create/Update File**: No changes needed (uses Build Request Body output)
 
 ### Step 5: Test
 1. Manually trigger the workflow
-2. Check that GraphQL returns workflow files
-3. Verify comparison logic works correctly
+2. Check that "Get Last Commit Date" returns commit info
+3. Verify "Compare Dates" correctly identifies newer workflows
 4. Confirm commits go directly to `main` branch
 
 ---
 
 ## Verification Checklist
 
-- [ ] GraphQL query returns all files in `workflows/` folder
-- [ ] Comparison correctly identifies new/updated workflows
-- [ ] Unchanged workflows are skipped
+- [ ] "Get Last Commit Date" returns commit info for existing files
+- [ ] "Get Last Commit Date" returns empty array for new files (no error)
+- [ ] "Compare Dates" correctly identifies: new files, updated files, already-synced files
+- [ ] Unchanged workflows are skipped (not committed)
 - [ ] Commits go to `main` branch (not `n8n-sync`)
 - [ ] Commit messages are correct
 - [ ] No errors when workflow doesn't exist in GitHub yet
+
+## API Rate Limit Info
+
+- **GitHub REST API limit:** 5,000 requests/hour (authenticated)
+- **Your usage per sync:** ~2 calls per workflow (commit date + commit)
+- **With 10 workflows, hourly sync:** ~20 calls/hour = **0.4% of quota**
 
 ---
 
