@@ -1733,5 +1733,8 @@
     "description": "first publish",
     "autosaved": false
   },
-  "tags": []
+  "tags": [],
+  "filename": "git-sync-workflow.json",
+  "needsSync": true,
+  "reason": "updated"
 }
