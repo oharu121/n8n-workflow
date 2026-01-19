@@ -14,6 +14,18 @@
       ],
       "depNameTemplate": "n8n",
       "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG NODE_VERSION=(?<currentValue>\\d+)\\n"
+      ],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ],
   "packageRules": [
