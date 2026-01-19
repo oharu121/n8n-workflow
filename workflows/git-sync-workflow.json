@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-01-19T14:50:42.275Z",
+  "updatedAt": "2026-01-19T15:09:35.204Z",
   "createdAt": "2026-01-15T17:34:16.824Z",
   "id": "0WxkD9-eMPQr7WJy6LiDV",
   "name": "git-sync-workflow",
@@ -15,7 +15,7 @@
       "typeVersion": 1,
       "position": [
         -1312,
-        160
+        240
       ],
       "id": "daa532fa-55b4-4a63-9b0a-c15bcc68e3fe",
       "name": "Get All Workflows",
@@ -28,52 +28,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get stored state from static data\nconst staticData = $getWorkflowStaticData('global');\nconst storedWorkflows = staticData.workflows || {};\n\n// Current workflows from n8n API\nconst currentWorkflows = $input.all()\n  .map(item => item.json)\n\n// Build current state map\nconst currentMap = {};\nfor (const wf of currentWorkflows) {\n  currentMap[wf.id] = {\n    id: wf.id,\n    name: wf.name,\n    updatedAt: wf.updatedAt,\n    workflow: wf\n  };\n}\n\n// Detect changes\nconst created = [];\nconst updated = [];\nconst deleted = [];\n\n// Find created and updated workflows\nfor (const id in currentMap) {\n  const current = currentMap[id];\n  const stored = storedWorkflows[id];\n  \n  if (!stored) {\n    // New workflow\n    created.push(current);\n  } else if (stored.updatedAt !== current.updatedAt) {\n    // Updated workflow\n    updated.push(current);\n  }\n}\n\n// Find deleted workflows\nfor (const id in storedWorkflows) {\n  if (!currentMap[id]) {\n    deleted.push(storedWorkflows[id]);\n  }\n}\n\n// Helper: sanitize workflow name for filename\nfunction sanitizeName(name) {\n  return name\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '');\n}\n\n// Prepare output items\nconst changes = {\n  created: created.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'create'\n  })),\n  updated: updated.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'update'\n  })),\n  deleted: deleted.map(wf => ({\n    ...wf,\n    filename: sanitizeName(wf.name) + '.json',\n    action: 'delete'\n  })),\n  hasChanges: created.length > 0 || updated.length > 0 || deleted.length > 0,\n  currentMap: currentMap,\n  summary: `Created: ${created.length}, Updated: ${updated.length}, Deleted: ${deleted.length}`\n};\n\nreturn [{ json: changes }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        32,
-        160
-      ],
-      "id": "76d0dbcb-2da3-4d04-88f0-03ca66b9ebb5",
-      "name": "Detect Changes"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "has-changes-condition",
-              "leftValue": "={{ $json.hasChanges }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        256,
-        160
-      ],
-      "id": "8d02eba5-2aa2-44ac-b28f-622f7169de8c",
-      "name": "Has Changes?"
-    },
-    {
-      "parameters": {
         "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $json.filename }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
@@ -82,7 +36,7 @@
           "parameters": [
             {
               "name": "ref",
-              "value": "n8n-sync"
+              "value": "main"
             }
           ]
         },
@@ -98,8 +52,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        704,
-        64
+        -416,
+        144
       ],
       "id": "4e6dabc2-f6f2-4141-b0ae-6be37bc342da",
       "name": "Get File SHA",
@@ -112,71 +66,8 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "is-delete-condition",
-              "leftValue": "={{ $('Split Into Items').item.json.action }}",
-              "rightValue": "delete",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        928,
-        64
-      ],
-      "id": "a110401e-0f76-41c8-a8e3-63837e7149f6",
-      "name": "Is Delete?"
-    },
-    {
-      "parameters": {
-        "method": "DELETE",
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $json.filename }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"chore(n8n): remove workflow '{{ $json.name }}' [auto-sync]\",\n  \"sha\": \"{{ $('Get File SHA').item.json.sha }}\",\n  \"branch\": \"n8n-sync\"\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1376,
-        -32
-      ],
-      "id": "5c9baae8-21f8-4b4d-9848-d50e946c35c6",
-      "name": "Delete File",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "IWWp65Bj7tNkqAlg",
-          "name": "Header Auth account"
-        },
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
         "method": "PUT",
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $('Split Into Items').item.json.filename }}\n",
+        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/contents/workflows/{{ $json.filename }}\n",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
@@ -187,8 +78,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1376,
-        160
+        32,
+        144
       ],
       "id": "cd6044ea-f6eb-4533-9ac8-e2df8feae10d",
       "name": "Create/Update File",
@@ -200,308 +91,15 @@
       }
     },
     {
-      "parameters": {
-        "aggregate": "aggregateAllItemData",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.aggregate",
-      "typeVersion": 1,
-      "position": [
-        1600,
-        64
-      ],
-      "id": "049c6fcc-7505-406b-834d-1de7311330fe",
-      "name": "Aggregate Results"
-    },
-    {
-      "parameters": {
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "head",
-              "value": "=oharu121:n8n-sync"
-            },
-            {
-              "name": "base",
-              "value": "main"
-            },
-            {
-              "name": "state",
-              "value": "open"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1824,
-        64
-      ],
-      "id": "8cd401f7-0176-4eeb-b89c-a1870a3dd0aa",
-      "name": "Check Existing PR",
-      "alwaysOutputData": true,
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "no-pr-condition",
-              "leftValue": "={{ !$json.number }}",
-              "rightValue": 0,
-              "operator": {
-                "type": "boolean",
-                "operation": "false",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2048,
-        64
-      ],
-      "id": "5de350cb-256f-40b9-b86a-c8a7fc81be86",
-      "name": "PR Exists?"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"title\": \"chore(n8n): workflow sync [auto]\",\n  \"head\": \"n8n-sync\",\n  \"base\": \"main\",\n  \"body\": \"## Automated n8n Workflow Sync\\n\\nThis PR was automatically created by the git-sync workflow.\\n\\n### Changes\\nWorkflows have been synchronized from the n8n instance.\\n\\n---\\n*Auto-generated by git-sync-workflow*\"\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2272,
-        160
-      ],
-      "id": "9325213c-e9f5-4bbd-9fa6-8f545bb1bddf",
-      "name": "Create PR",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/pulls/{{ $json.number }}/merge",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"commit_title\": \"chore(n8n): workflow sync [auto]\",\n  \"merge_method\": \"squash\"\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2496,
-        64
-      ],
-      "id": "d4d37f81-762d-42e3-bede-d47a916f5b00",
-      "name": "Merge PR (Auto)",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Store the current workflow state for next run\nconst staticData = $getWorkflowStaticData('global');\n\n// Get currentMap from first item (all items have it)\nconst firstItem = $input.first();\nif (firstItem && firstItem.json && firstItem.json.currentMap) {\n  staticData.workflows = firstItem.json.currentMap;\n}\n\nreturn [{ json: { message: 'State saved successfully', timestamp: new Date().toISOString() } }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2720,
-        64
-      ],
-      "id": "ae6207cf-46d8-4361-aff0-ea31908fc1c7",
-      "name": "Save State"
-    },
-    {
-      "parameters": {
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs/heads/n8n-sync",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -1184,
-        832
-      ],
-      "id": "ed53a1b6-2c12-412e-949d-617dcf230bef",
-      "name": "Check Branch Exists",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "IWWp65Bj7tNkqAlg",
-          "name": "Header Auth account"
-        },
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "branch-not-found",
-              "leftValue": "={{ $json.message }}",
-              "rightValue": "Not Found",
-              "operator": {
-                "type": "string",
-                "operation": "notEquals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        -960,
-        832
-      ],
-      "id": "e4580e40-f784-43fb-be23-5766c156ba6c",
-      "name": "Branch Exists?"
-    },
-    {
-      "parameters": {
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs/heads/main",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -736,
-        928
-      ],
-      "id": "7aa53065-4271-479d-b073-ddaaf73cd6ad",
-      "name": "Get Main SHA",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "IWWp65Bj7tNkqAlg",
-          "name": "Header Auth account"
-        },
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://api.github.com/repos/oharu121/n8n-workflow/git/refs",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"ref\": \"refs/heads/n8n-sync\",\n  \"sha\": \"{{ $json.object.sha }}\"\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -512,
-        928
-      ],
-      "id": "640fb613-1684-410b-86d9-790ffec332af",
-      "name": "Create n8n-sync Branch",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "IWWp65Bj7tNkqAlg",
-          "name": "Header Auth account"
-        },
-        "httpBearerAuth": {
-          "id": "6JPGyoToOxOcHftx",
-          "name": "n8n sync github token"
-        }
-      }
-    },
-    {
       "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        480,
-        256
+        -416,
+        336
       ],
       "id": "80a3d37f-da98-4828-bc64-aac6074aa490",
       "name": "No Changes"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Get the existing PR from the check\nconst existingPRs = $('Check Existing PR').first().json;\nif (existingPRs && existingPRs.length > 0) {\n  return [{ json: existingPRs[0] }];\n}\nreturn [];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2272,
-        -32
-      ],
-      "id": "cc98547d-7920-4b86-ae23-dbf29e488adb",
-      "name": "Get Existing PR"
     },
     {
       "parameters": {
@@ -515,59 +113,24 @@
       "typeVersion": 1.2,
       "position": [
         -1536,
-        160
+        240
       ],
       "id": "6181b14b-80e7-48d6-85e8-60d1eed86d35",
       "name": "Schedule Trigger"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        -512,
-        736
-      ],
-      "id": "62286096-97d8-4736-abd0-695fadb630f3",
-      "name": "Branch is ready"
-    },
-    {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const original = $('Split Into Items').item.json;\nconst sha = $json.sha;\n\nconst body = {\n  message: `chore(n8n): sync workflow '${original.name}' [auto-sync]`,\n  content: original.contentBase64,\n  branch: 'n8n-sync'\n};\n\nif (sha) {\n  body.sha = sha;\n}\n\nreturn { requestBody: body, filename: original.filename };\n"
+        "jsCode": "const workflow = $('Compare Dates').item.json;\nconst sha = $json.sha || null;\n\nconst content = JSON.stringify(workflow, null, 2) + '\\n';\nconst contentBase64 = Buffer.from(content).toString('base64');\n\nconst body = {\n  message: `chore(n8n): sync workflow '${workflow.name}' [auto-sync]`,\n  content: contentBase64,\n  branch: 'main'\n};\n\nif (sha) {\n  body.sha = sha;\n}\n\nreturn { \n  json: { \n    requestBody: body, \n    filename: workflow.filename \n  } \n};\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1152,
-        160
+        -192,
+        144
       ],
       "id": "be4eaaf3-5c16-4f8b-847d-322685081b5e",
       "name": "Build Request Body"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -288,
-        832
-      ],
-      "id": "dc59c629-2ce8-4968-a108-b88f4e0bd003",
-      "name": "Merge"
-    },
-    {
-      "parameters": {
-        "jsCode": "const workflows = $('Get All Workflows').all();\nconst commits = $('Get GitHub Commits').all();\n\nconsole.log(\"workflows arr: \", workflows)\nconsole.log(\"commits arr: \", workflows)\nconst results = [];\nfor (let i = 0; i < workflows.length; i++) {\n  const wf = workflows[i].json;\n  const commit = commits[i].json;\n  \n  const n8nUpdatedAt = new Date(wf.updatedAt);\n  const githubCommitDate = new Date(commit.commit.committer.date);\n  \n  const needsSync = n8nUpdatedAt > githubCommitDate;\n  \n  results.push({\n    json: {\n      ...wf,\n      filename: wf.name + '.json',\n      needsSync,\n      reason: needsSync ? 'updated' : 'already synced'\n    }\n  });\n}\n\nreturn results;"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -896,
-        160
-      ],
-      "id": "21c15c6f-2a70-49b8-8e4c-0cd3ba404492",
-      "name": "Code in JavaScript"
     },
     {
       "parameters": {
@@ -592,8 +155,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        -1104,
-        160
+        -1088,
+        240
       ],
       "id": "ecf243ba-d6a0-4c72-a8e4-44ba232b11fe",
       "name": "Get GitHub Commits",
@@ -603,6 +166,52 @@
           "name": "n8n sync github token"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflows = $('Get All Workflows').all();\nconst commits = $('Get GitHub Commits').all();\n\nconsole.log(\"workflows arr: \", workflows)\nconsole.log(\"commits arr: \", workflows)\nconst results = [];\nfor (let i = 0; i < workflows.length; i++) {\n  const wf = workflows[i].json;\n  const commit = commits[i].json;\n  \n  const n8nUpdatedAt = new Date(wf.updatedAt);\n  const githubCommitDate = new Date(commit.commit.committer.date);\n  \n  const needsSync = n8nUpdatedAt > githubCommitDate;\n  \n  results.push({\n    json: {\n      ...wf,\n      filename: wf.name + '.json',\n      needsSync,\n      reason: needsSync ? 'updated' : 'already synced'\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        240
+      ],
+      "id": "21c15c6f-2a70-49b8-8e4c-0cd3ba404492",
+      "name": "Compare Dates"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-changes-condition",
+              "leftValue": "={{ $json.needsSync }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        240
+      ],
+      "id": "8d02eba5-2aa2-44ac-b28f-622f7169de8c",
+      "name": "Need Sync?"
     }
   ],
   "connections": {
@@ -617,49 +226,8 @@
         ]
       ]
     },
-    "Detect Changes": {
-      "main": [
-        [
-          {
-            "node": "Has Changes?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has Changes?": {
-      "main": [
-        [],
-        [
-          {
-            "node": "No Changes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Get File SHA": {
       "main": [
-        [
-          {
-            "node": "Is Delete?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Delete?": {
-      "main": [
-        [
-          {
-            "node": "Delete File",
-            "type": "main",
-            "index": 0
-          }
-        ],
         [
           {
             "node": "Build Request Body",
@@ -669,139 +237,9 @@
         ]
       ]
     },
-    "Delete File": {
-      "main": [
-        [
-          {
-            "node": "Aggregate Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Create/Update File": {
       "main": [
-        [
-          {
-            "node": "Aggregate Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aggregate Results": {
-      "main": [
-        [
-          {
-            "node": "Check Existing PR",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Existing PR": {
-      "main": [
-        [
-          {
-            "node": "PR Exists?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "PR Exists?": {
-      "main": [
-        [
-          {
-            "node": "Get Existing PR",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Create PR",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create PR": {
-      "main": [
-        [
-          {
-            "node": "Merge PR (Auto)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge PR (Auto)": {
-      "main": [
-        [
-          {
-            "node": "Save State",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Branch Exists": {
-      "main": [
-        [
-          {
-            "node": "Branch Exists?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Branch Exists?": {
-      "main": [
-        [
-          {
-            "node": "Branch is ready",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get Main SHA",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Main SHA": {
-      "main": [
-        [
-          {
-            "node": "Create n8n-sync Branch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Existing PR": {
-      "main": [
-        [
-          {
-            "node": "Merge PR (Auto)",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Schedule Trigger": {
@@ -826,38 +264,40 @@
         ]
       ]
     },
-    "Create n8n-sync Branch": {
+    "Get GitHub Commits": {
       "main": [
         [
           {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Branch is ready": {
-      "main": [
-        [
-          {
-            "node": "Merge",
+            "node": "Compare Dates",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge": {
-      "main": [
-        []
-      ]
-    },
-    "Get GitHub Commits": {
+    "Compare Dates": {
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Need Sync?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Sync?": {
+      "main": [
+        [
+          {
+            "node": "Get File SHA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Changes",
             "type": "main",
             "index": 0
           }
@@ -874,7 +314,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "0584c269-2159-4576-bef3-96413d2e78ad",
+  "versionId": "e5392e8b-1af3-458b-b9de-521448e6aa94",
   "activeVersionId": "04dba160-9177-42d6-8df5-025c1fad9dfa",
   "triggerCount": 1,
   "shared": [
