@@ -1,7 +1,7 @@
 {
   "id": "Ul4qc6sH2eCaTapb",
   "name": "sino-trade-weekly-article-boost",
-  "updatedAt": "2026-01-21T05:45:40.968Z",
+  "updatedAt": "2026-01-28T05:59:40.346Z",
   "active": true,
   "nodes": [
     {
@@ -24,7 +24,7 @@
       "typeVersion": 1.2,
       "position": [
         -224,
-        144
+        96
       ]
     },
     {
@@ -78,7 +78,7 @@
       "typeVersion": 4.2,
       "position": [
         0,
-        304
+        192
       ]
     },
     {
@@ -104,7 +104,7 @@
       "typeVersion": 2,
       "position": [
         224,
-        304
+        192
       ]
     },
     {
@@ -116,8 +116,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
-        144
+        896,
+        96
       ]
     },
     {
@@ -127,7 +127,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        464,
+        448,
         0
       ],
       "id": "c5f82a7a-98f8-4a51-aff7-8d3c9cb6b3a6",
@@ -140,33 +140,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        464,
-        304
+        448,
+        192
       ],
       "id": "5d7dc4bc-9f60-4e83-878f-bf47a16b0209",
       "name": "Boost View 川普專題"
-    },
-    {
-      "parameters": {
-        "authentication": "webhook",
-        "content": "={{ $json.message }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.discord",
-      "typeVersion": 2,
-      "position": [
-        1184,
-        -16
-      ],
-      "id": "1ef12db6-b1ed-4689-a0a3-da6c067f254b",
-      "name": "Notify Discord",
-      "webhookId": "a2cf639d-4a4a-4391-b665-269703327916",
-      "credentials": {
-        "discordWebhookApi": {
-          "id": "PgAS3Za8Re1XFY1H",
-          "name": "Discord Webhook account"
-        }
-      }
     },
     {
       "parameters": {
@@ -177,8 +155,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        752,
-        144
+        672,
+        96
       ],
       "id": "78253ec2-aa76-406d-93b0-bc34e3727c22",
       "name": "Merge"
@@ -197,8 +175,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        1184,
-        304
+        1120,
+        96
       ],
       "id": "8efd2189-96f6-49b4-94f3-89a90ca64ef2",
       "name": "Notify Line",
@@ -275,11 +253,6 @@
       "main": [
         [
           {
-            "node": "Notify Discord",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Notify Line",
             "type": "main",
             "index": 0
@@ -307,11 +280,6 @@
             "index": 1
           }
         ]
-      ]
-    },
-    "Notify Discord": {
-      "main": [
-        []
       ]
     },
     "Merge": {
