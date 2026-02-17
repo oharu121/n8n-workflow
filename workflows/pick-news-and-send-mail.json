@@ -1,10 +1,8 @@
 {
-  "updatedAt": "2025-12-30T14:57:54.856Z",
-  "createdAt": "2025-12-30T13:12:16.546Z",
   "id": "NIgES2bUaGVQH4Yk",
   "name": "pick-news-and-send-mail",
+  "updatedAt": "2026-02-17T06:02:24.244Z",
   "active": true,
-  "isArchived": false,
   "nodes": [
     {
       "parameters": {
@@ -27,7 +25,7 @@
       "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        416,
+        432,
         0
       ],
       "id": "51aaf6c4-bd5c-4062-899a-0354099a3d6a",
@@ -44,8 +42,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        -16,
-        208
+        1328,
+        0
       ],
       "id": "453bd1cf-de02-4411-83fe-e862051c09d8",
       "name": "AI Agent"
@@ -57,15 +55,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -16,
-        384
+        1400,
+        224
       ],
       "id": "bae1199b-118e-44db-ad1e-8692a818ddf4",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
           "id": "kqJk9HBPKYFAwIoH",
-          "name": "Google Gemini(PaLM) Api account"
+          "name": "n8n-workflow"
         }
       }
     },
@@ -83,8 +81,8 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        336,
-        208
+        1680,
+        0
       ],
       "id": "f2dbf2be-0e62-4089-a18b-5899401713d0",
       "name": "Aggregate"
@@ -98,8 +96,8 @@
       "type": "n8n-nodes-base.markdown",
       "typeVersion": 1,
       "position": [
-        576,
-        208
+        1904,
+        0
       ],
       "id": "a429879f-3463-4cf9-85c4-94e1d17bc022",
       "name": "Markdown"
@@ -116,8 +114,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        784,
-        208
+        2128,
+        0
       ],
       "id": "e190fd30-c505-46ff-bfa3-f1938de751fc",
       "name": "Send a message",
@@ -162,7 +160,7 @@
       "type": "n8n-nodes-base.html",
       "typeVersion": 1.2,
       "position": [
-        832,
+        880,
         0
       ],
       "id": "6ff34163-1dc4-4d23-a50f-1ccaaf1d4265",
@@ -196,7 +194,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        992,
+        1104,
         0
       ],
       "id": "eb286888-b19e-4896-a8e1-79929081e19e",
@@ -213,7 +211,7 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
+        -16,
         0
       ],
       "id": "598a2b06-407e-4045-adf5-2a813983110a",
@@ -345,354 +343,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "4e57c83c-9605-464f-a345-3200a16fd4e0",
-  "activeVersionId": "4e57c83c-9605-464f-a345-3200a16fd4e0",
-  "triggerCount": 1,
-  "shared": [
-    {
-      "updatedAt": "2025-12-30T13:12:16.546Z",
-      "createdAt": "2025-12-30T13:12:16.546Z",
-      "role": "workflow:owner",
-      "workflowId": "NIgES2bUaGVQH4Yk",
-      "projectId": "1yHpLTrY34GY4WHm"
-    }
-  ],
-  "activeVersion": {
-    "updatedAt": "2025-12-30T14:59:29.819Z",
-    "createdAt": "2025-12-30T14:57:55.156Z",
-    "versionId": "4e57c83c-9605-464f-a345-3200a16fd4e0",
-    "workflowId": "NIgES2bUaGVQH4Yk",
-    "nodes": [
-      {
-        "parameters": {
-          "url": "https://hnrss.org/newest?points=100",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.rssFeedRead",
-        "typeVersion": 1.2,
-        "position": [
-          208,
-          0
-        ],
-        "id": "4d40615c-e0a4-49f8-8eea-4c417bbdc35e",
-        "name": "RSS Read"
-      },
-      {
-        "parameters": {
-          "maxItems": 3
-        },
-        "type": "n8n-nodes-base.limit",
-        "typeVersion": 1,
-        "position": [
-          416,
-          0
-        ],
-        "id": "51aaf6c4-bd5c-4062-899a-0354099a3d6a",
-        "name": "Limit"
-      },
-      {
-        "parameters": {
-          "promptType": "define",
-          "text": "={{ $json.articleText }}",
-          "options": {
-            "systemMessage": "# 指令\n\n你是一位專業的新聞編輯，專長是從雜亂的原始文本中提取核心資訊。\n\n## 任務\n\n我會提供一段從網站爬取的原始文本，其中可能包含廣告、導航連結和無關的程式碼。請你執行以下步驟：\n\n1.  **識別核心內容**：從原始文本中找出主要的新聞文章內容。\n2.  **忽略雜訊**：完全忽略廣告、頁首/頁尾、社群分享按鈕和「相關文章」等所有非核心內容。\n3.  **整理成簡報**：將核心內容整理成以下格式的重點摘要。\n\n## 輸出格式\n\n請嚴格遵循以下 Markdown 格式，並且只輸出這個格式的內容：\n\n### **標題**\n*此處是文章的標題*\n\n**摘要**\n*此處是一段約 50-80 字的簡潔摘要*\n\n**重點**\n- *此處是第一個關鍵重點*\n- *此處是第二個關鍵重點*\n- *此處是第三個關鍵重點*\n\n---\n**[重要規則]**\n- 你的所有回覆**只能**是最終的 Markdown 格式簡報。\n- **絕對不要**包含任何對話性文字，例如「好的，這是您的簡報：」。\n- 直接以「### **標題**」開始你的回覆。\n- 簡報內容必須使用**繁體中文**。"
-          }
-        },
-        "type": "@n8n/n8n-nodes-langchain.agent",
-        "typeVersion": 2.2,
-        "position": [
-          -16,
-          208
-        ],
-        "id": "453bd1cf-de02-4411-83fe-e862051c09d8",
-        "name": "AI Agent"
-      },
-      {
-        "parameters": {
-          "options": {}
-        },
-        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-        "typeVersion": 1,
-        "position": [
-          -16,
-          384
-        ],
-        "id": "bae1199b-118e-44db-ad1e-8692a818ddf4",
-        "name": "Google Gemini Chat Model",
-        "credentials": {
-          "googlePalmApi": {
-            "id": "kqJk9HBPKYFAwIoH",
-            "name": "Google Gemini(PaLM) Api account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "fieldsToAggregate": {
-            "fieldToAggregate": [
-              {
-                "fieldToAggregate": "output"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.aggregate",
-        "typeVersion": 1,
-        "position": [
-          336,
-          208
-        ],
-        "id": "f2dbf2be-0e62-4089-a18b-5899401713d0",
-        "name": "Aggregate"
-      },
-      {
-        "parameters": {
-          "mode": "markdownToHtml",
-          "markdown": "={{ $json.output.join(\"\\n\\n\") }}",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.markdown",
-        "typeVersion": 1,
-        "position": [
-          576,
-          208
-        ],
-        "id": "a429879f-3463-4cf9-85c4-94e1d17bc022",
-        "name": "Markdown"
-      },
-      {
-        "parameters": {
-          "sendTo": "jefflin1201@gmail.com",
-          "subject": "熱門新聞彙總",
-          "message": "={{ $json.data }}",
-          "options": {
-            "appendAttribution": false
-          }
-        },
-        "type": "n8n-nodes-base.gmail",
-        "typeVersion": 2.1,
-        "position": [
-          784,
-          208
-        ],
-        "id": "e190fd30-c505-46ff-bfa3-f1938de751fc",
-        "name": "Send a message",
-        "webhookId": "aa508e8b-fac2-4e37-a0ee-8f3e5bfb5e3b",
-        "credentials": {
-          "gmailOAuth2": {
-            "id": "WH9s8y68liwRNhZR",
-            "name": "Gmail account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "url": "={{ $json.link }}",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          656,
-          0
-        ],
-        "id": "74eb0c7a-70e6-4ac1-b7c3-ba1b89c81372",
-        "name": "HTTP Request"
-      },
-      {
-        "parameters": {
-          "operation": "extractHtmlContent",
-          "extractionValues": {
-            "values": [
-              {
-                "key": "articleText",
-                "cssSelector": "body"
-              }
-            ]
-          },
-          "options": {
-            "trimValues": true,
-            "cleanUpText": true
-          }
-        },
-        "type": "n8n-nodes-base.html",
-        "typeVersion": 1.2,
-        "position": [
-          832,
-          0
-        ],
-        "id": "6ff34163-1dc4-4d23-a50f-1ccaaf1d4265",
-        "name": "HTML"
-      },
-      {
-        "parameters": {
-          "conditions": {
-            "options": {
-              "caseSensitive": true,
-              "leftValue": "",
-              "typeValidation": "strict",
-              "version": 2
-            },
-            "conditions": [
-              {
-                "id": "a61dd238-e1a1-4406-aea2-7502f6a785cf",
-                "leftValue": "={{ $json.articleText }}",
-                "rightValue": "",
-                "operator": {
-                  "type": "string",
-                  "operation": "notEmpty",
-                  "singleValue": true
-                }
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 2.2,
-        "position": [
-          992,
-          0
-        ],
-        "id": "eb286888-b19e-4896-a8e1-79929081e19e",
-        "name": "If"
-      },
-      {
-        "parameters": {
-          "rule": {
-            "interval": [
-              {}
-            ]
-          }
-        },
-        "type": "n8n-nodes-base.scheduleTrigger",
-        "typeVersion": 1.2,
-        "position": [
-          0,
-          0
-        ],
-        "id": "598a2b06-407e-4045-adf5-2a813983110a",
-        "name": "Schedule Trigger"
-      }
-    ],
-    "connections": {
-      "RSS Read": {
-        "main": [
-          [
-            {
-              "node": "Limit",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Limit": {
-        "main": [
-          [
-            {
-              "node": "HTTP Request",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Google Gemini Chat Model": {
-        "ai_languageModel": [
-          [
-            {
-              "node": "AI Agent",
-              "type": "ai_languageModel",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "AI Agent": {
-        "main": [
-          [
-            {
-              "node": "Aggregate",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Aggregate": {
-        "main": [
-          [
-            {
-              "node": "Markdown",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Markdown": {
-        "main": [
-          [
-            {
-              "node": "Send a message",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTTP Request": {
-        "main": [
-          [
-            {
-              "node": "HTML",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "HTML": {
-        "main": [
-          [
-            {
-              "node": "If",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "If": {
-        "main": [
-          [
-            {
-              "node": "AI Agent",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Schedule Trigger": {
-        "main": [
-          [
-            {
-              "node": "RSS Read",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      }
-    },
-    "authors": "Yuchen Lin",
-    "name": "Version 4e57c83c",
-    "description": "",
-    "autosaved": false
-  },
-  "tags": []
+  "filename": "pick-news-and-send-mail.json",
+  "needsSync": true,
+  "reason": "updated"
 }
