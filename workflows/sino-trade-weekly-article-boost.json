@@ -1,7 +1,7 @@
 {
   "id": "Ul4qc6sH2eCaTapb",
   "name": "sino-trade-weekly-article-boost",
-  "updatedAt": "2026-02-18T12:07:23.726Z",
+  "updatedAt": "2026-02-25T05:49:59.858Z",
   "active": true,
   "nodes": [
     {
@@ -109,7 +109,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build notification message\nlet macroResult = $('Boost View 深談總經').first().json\nlet trumpResult = $('Boost View 川普專題').first().json\n\nconst now = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });\n\nreturn {\n  json: {\n    macroResult: {\n      totalToRun: macroResult.totalToRun.toLocaleString(),\n      successCount: macroResult.successCount.toLocaleString(),\n      failCount: macroResult.failCount.toLocaleString(),\n      oldViewCount: macroResult.oldViewCount.toLocaleString(),\n      newViewCount: macroResult.newViewCount.toLocaleString(),\n      successRate: macroResult.successRate,\n      uri: $('Build URL 深談總經').first().json.url.urlEncode()\n    },\n    trumpResult: {\n      totalToRun: trumpResult.totalToRun.toLocaleString(),\n      successCount: trumpResult.successCount.toLocaleString(),\n      failCount: trumpResult.failCount.toLocaleString(),\n      oldViewCount: trumpResult.oldViewCount.toLocaleString(),\n      newViewCount: trumpResult.newViewCount.toLocaleString(),\n      successRate: trumpResult.successRate,\n      uri: $('Build URL 川普專題').first().json.url.urlEncode()\n    },\n    completedAt: now\n  }\n};"
+        "jsCode": "// Build notification message\nlet macroResult = $('Boost View 深談總經').first().json\nlet trumpResult = $('Boost View 川普專題').first().json\n\nconst now = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });\n\nreturn {\n  json: {\n    macroResult: {\n      totalToRun: macroResult.totalToRun.toLocaleString(),\n      successCount: macroResult.successCount.toLocaleString(),\n      failCount: macroResult.failCount.toLocaleString(),\n      oldViewCount: macroResult.oldViewCount.toLocaleString(),\n      newViewCount: macroResult.newViewCount.toLocaleString(),\n      successRate: macroResult.successRate,\n      uri: encodeURIComponent($('Build URL 深談總經').first().json.url)\n    },\n    trumpResult: {\n      totalToRun: trumpResult.totalToRun.toLocaleString(),\n      successCount: trumpResult.successCount.toLocaleString(),\n      failCount: trumpResult.failCount.toLocaleString(),\n      oldViewCount: trumpResult.oldViewCount.toLocaleString(),\n      newViewCount: trumpResult.newViewCount.toLocaleString(),\n      successRate: trumpResult.successRate,\n      uri: encodeURIComponent($('Build URL 川普專題').first().json.url)\n    },\n    completedAt: now\n  }\n};"
       },
       "id": "6a283323-578c-4d45-ba50-db97c0df9d29",
       "name": "Build Notification",
