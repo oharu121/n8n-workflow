@@ -38,7 +38,7 @@ RUN cp /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 WORKDIR /home/node/app
 
 # Install n8n globally (version managed by Renovate)
-ARG N8N_VERSION=2.17.7
+ARG N8N_VERSION=2.18.5
 RUN npm install -g n8n@${N8N_VERSION}
 
 # Copy scripts
