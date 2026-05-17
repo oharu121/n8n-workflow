@@ -93,6 +93,7 @@ ENV EXECUTIONS_DATA_SAVE_ON_ERROR=all
 # -----------------------------------------------------------------------------
 ENV NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
 ENV NODE_FUNCTION_ALLOW_BUILTIN=*
+ENV N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 
 # -----------------------------------------------------------------------------
 # External Tools (Puppeteer/Chromium)
