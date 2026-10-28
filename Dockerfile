@@ -3,7 +3,7 @@
 # Optimized for HF Spaces free tier (2 vCPU, 16GB RAM, 50GB disk)
 # =============================================================================
 
-ARG NODE_VERSION=24
+ARG NODE_VERSION=26
 FROM node:${NODE_VERSION}-alpine
 
 # Install system dependencies
